@@ -113,4 +113,31 @@ describe('BookCollection.addBook (comprehensive)', () => {
     assert.throws(() => coll.addBook('Title', '   '), /author is required/);
   });
 
+  // --- removeBook tests ---
+  it('removeBook removes exact title and preserves partial titles', () => {
+    const coll = new BookCollection(tempFile);
+    coll.addBook('Dune', 'Frank Herbert');
+    coll.addBook('Dune Messiah', 'Frank Herbert');
+    const ok = coll.removeBook('Dune');
+    assert.strictEqual(ok, true);
+    assert.deepStrictEqual(coll.books.map(b => b.title), ['Dune Messiah']);
+  });
+
+  it('removeBook does not remove partial matches when exact not found', () => {
+    const coll = new BookCollection(tempFile);
+    coll.addBook('Dune Messiah', 'Frank Herbert');
+    const ok = coll.removeBook('Dune');
+    assert.strictEqual(ok, false);
+    assert.deepStrictEqual(coll.books.map(b => b.title), ['Dune Messiah']);
+  });
+
+  it('removeBook can remove specific book when titles duplicate but authors differ', () => {
+    const coll = new BookCollection(tempFile);
+    coll.addBook('Common Title', 'Author A');
+    coll.addBook('Common Title', 'Author B');
+    const ok = coll.removeBook('Common Title', 'Author B');
+    assert.strictEqual(ok, true);
+    assert.deepStrictEqual(coll.books.map(b => `${b.title}:::${b.author}`), ['Common Title:::Author A']);
+  });
+
 });

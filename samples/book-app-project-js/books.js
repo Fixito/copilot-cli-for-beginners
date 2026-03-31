@@ -371,11 +371,58 @@ class BookCollection {
 
   /**
    * Remove a book by title. Returns true if removed, false if not found.
+   *
+   * Supports optional second parameter to disambiguate or control behavior:
+   * - removeBook(title, 'Author Name') to remove by title+author
+   * - removeBook(title, { author: 'Author Name', removeAll: true, normalize: false })
    */
-  removeBook(title) {
-    const book = this.findBookByTitle(title);
-    if (!book) return false;
-    this.books = this.books.filter((b) => b !== book);
+  removeBook(title, optionsOrAuthor) {
+    if (!title || typeof title !== 'string') return false;
+
+    // Normalize options
+    let author = null;
+    let removeAll = false;
+    let doNormalize = true;
+    if (typeof optionsOrAuthor === 'string') {
+      author = optionsOrAuthor;
+    } else if (optionsOrAuthor && typeof optionsOrAuthor === 'object') {
+      if (typeof optionsOrAuthor.author === 'string') author = optionsOrAuthor.author;
+      if (optionsOrAuthor.removeAll === true) removeAll = true;
+      if (typeof optionsOrAuthor.normalize === 'boolean') doNormalize = optionsOrAuthor.normalize;
+    }
+
+    const norm = (s) => {
+      if (typeof s !== 'string') return s;
+      let t = s.trim();
+      if (doNormalize && typeof t.normalize === 'function') t = t.normalize('NFC');
+      return t.toLowerCase();
+    };
+
+    const searchTitle = norm(title);
+    const searchAuthor = author ? norm(author) : null;
+
+    // collect matching indices
+    const matches = [];
+    for (let i = 0; i < this.books.length; i++) {
+      const b = this.books[i];
+      if (!b || !b.title) continue;
+      const bt = norm(b.title);
+      if (bt !== searchTitle) continue;
+      if (searchAuthor) {
+        if (!b.author) continue;
+        if (norm(b.author) !== searchAuthor) continue;
+      }
+      matches.push(i);
+      if (!removeAll) break;
+    }
+
+    if (matches.length === 0) return false;
+
+    // remove from end to start to preserve indices
+    for (let j = matches.length - 1; j >= 0; j--) {
+      this.books.splice(matches[j], 1);
+    }
+
     this.saveBooks();
     return true;
   }
