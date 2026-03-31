@@ -46,8 +46,16 @@ function handleList() {
   }
 }
 
-// Single readline instance for interactive prompts to avoid creating many interfaces
-const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+let rl;
+function getReadline() {
+  if (!rl) {
+    if (!process.stdin.isTTY) {
+      throw new Error('Interactive prompts require a TTY');
+    }
+    rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  }
+  return rl;
+}
 
 /**
  * Prompt the user for input.
@@ -55,9 +63,10 @@ const rl = readline.createInterface({ input: process.stdin, output: process.stdo
  * @returns {Promise<string>}
  */
 function prompt(question) {
+  const reader = getReadline();
   return new Promise((resolve) => {
-    rl.question(question, (answer) => {
-      resolve(answer.trim());
+    reader.question(question, (answer) => {
+      resolve(typeof answer === 'string' ? answer.trim() : '');
     });
   });
 }
@@ -68,7 +77,10 @@ function prompt(question) {
  */
 function closePrompt() {
   try {
-    rl.close();
+    if (rl) {
+      rl.close();
+      rl = undefined;
+    }
   } catch (err) {
     // ignore
   }
