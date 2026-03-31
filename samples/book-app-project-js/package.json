@@ -5,6 +5,6 @@
   "main": "book_app.js",
   "scripts": {
     "start": "node book_app.js",
-    "test": "node --test tests/test_books.js"
+    "test": "node --test"
   }
 }
