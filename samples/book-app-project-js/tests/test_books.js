@@ -113,4 +113,40 @@ describe('BookCollection', () => {
     assert.equal(results.length, 0);
   });
 
+  it('should list books by year range (inclusive), include null-year entries and sort by year desc', () => {
+    const collection = new BookCollection(tempFile);
+    collection.addBook('Old Book', 'Author1', 1980);
+    collection.addBook('Mid Book', 'Author2', 1995);
+    collection.addBook('New Book', 'Author3', 2010);
+    collection.addBook('Mystery Book', 'Author4', null);
+    const results = collection.listByYear('1980', '2010');
+    assert.equal(results.length, 4);
+    assert.equal(results[0].title, 'New Book');
+    assert.equal(results[1].title, 'Mid Book');
+    assert.equal(results[2].title, 'Old Book');
+    assert.equal(results[3].title, 'Mystery Book');
+  });
+
+  it('should handle swapped bounds and accept string bounds', () => {
+    const collection = new BookCollection(tempFile);
+    collection.addBook('A', 'a', 1990);
+    collection.addBook('B', 'b', 2000);
+    const results = collection.listByYear(2000, '1990');
+    assert.equal(results.length, 2);
+    assert.equal(results[0].year, 2000);
+    assert.equal(results[1].year, 1990);
+  });
+
+  it('should support open-ended bounds', () => {
+    const collection = new BookCollection(tempFile);
+    collection.addBook('Before', 'One', 1980);
+    collection.addBook('After', 'Two', 2020);
+    const res1 = collection.listByYear(2000, null);
+    assert.equal(res1.length, 1);
+    assert.equal(res1[0].title, 'After');
+    const res2 = collection.listByYear(null, 1990);
+    assert.equal(res2.length, 1);
+    assert.equal(res2[0].title, 'Before');
+  });
+
 });

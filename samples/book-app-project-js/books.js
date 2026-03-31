@@ -243,6 +243,41 @@ class BookCollection {
   }
 
   /**
+   * List books by publication year range.
+   * Behavior: inclusive bounds; accepts string numeric bounds; if start > end they are swapped; books with missing/null year are included; results sorted by year descending (nulls last).
+   * @param {number|string|null|undefined} start
+   * @param {number|string|null|undefined} end
+   * @returns {Array<Book>} array of Book instances
+   */
+  listByYear(start, end) {
+    let s = Book.normalizeYear(start);
+    let e = Book.normalizeYear(end);
+
+    // if both bounds provided and out of order, swap
+    if (s !== null && e !== null && s > e) { const tmp = s; s = e; e = tmp; }
+
+    const results = this.books.filter((b) => {
+      if (!b) return false;
+      // include books with missing/null year per user preference
+      if (b.year === null) return true;
+      const y = Number(b.year);
+      if (s !== null && e !== null) return y >= s && y <= e;
+      if (s !== null) return y >= s;
+      if (e !== null) return y <= e;
+      return true;
+    });
+
+    // sort by year descending (null years placed last)
+    results.sort((a, b) => {
+      const ay = a.year === null ? Number.NEGATIVE_INFINITY : Number(a.year);
+      const by = b.year === null ? Number.NEGATIVE_INFINITY : Number(b.year);
+      return by - ay;
+    });
+
+    return results;
+  }
+
+  /**
    * Return simple stats about the collection.
    */
   stats() {
@@ -360,12 +395,13 @@ class BookCollection {
    */
   search(query, options = {}) {
     if (!query || typeof query !== 'string') return [];
+    if (!query || typeof query !== 'string') return [];
     const q = query.trim();
     if (q === '') return [];
     const fields = Array.isArray(options.fields) && options.fields.length > 0 ? options.fields.map((f) => f.toLowerCase()) : ['title', 'author'];
     const normalized = q.toLowerCase();
     const results = [];
-    for (const b of this.books) {
+      for (const b of this.books) {
       if (!b) continue;
       let matched = false;
       for (const field of fields) {
