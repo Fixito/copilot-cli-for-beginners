@@ -80,6 +80,14 @@ class BookCollection {
     this.loadBooks();
   }
 
+  // Normalization helper: trims, applies Unicode NFC normalization, and lowercases.
+  _norm(s) {
+    if (typeof s !== 'string') return '';
+    let t = s.trim();
+    if (typeof t.normalize === 'function') t = t.normalize('NFC');
+    return t.toLowerCase();
+  }
+
   loadBooks() {
     try {
       const raw = fs.readFileSync(this.dataFile, 'utf8');
@@ -147,8 +155,10 @@ class BookCollection {
     }
     const t = title.trim();
     const a = author.trim();
-    // duplicate detection
-    const exists = this.books.some((b) => b.title.toLowerCase() === t.toLowerCase() && b.author.toLowerCase() === a.toLowerCase());
+    // duplicate detection (use centralized normalization)
+    const nt = this._norm(t);
+    const na = this._norm(a);
+    const exists = this.books.some((b) => this._norm(b.title) === nt && this._norm(b.author) === na);
     if (exists) throw new Error('book already exists');
 
     const book = new Book(t, a, year);
@@ -304,7 +314,7 @@ class BookCollection {
         const read = Object.prototype.hasOwnProperty.call(e, 'read') ? Boolean(e.read) : false;
         const reviews = Object.prototype.hasOwnProperty.call(e, 'reviews') ? e.reviews : [];
         if (!title || !author) { skipped++; continue; }
-        const exists = this.books.some((b) => b.title.toLowerCase() === title.toLowerCase() && b.author.toLowerCase() === author.toLowerCase());
+        const exists = this.books.some((b) => this._norm(b.title) === this._norm(title) && this._norm(b.author) === this._norm(author));
         if (exists && skipDuplicates) { skipped++; continue; }
         this.books.push(new Book(title, author, year, read, reviews));
         added++;
@@ -332,8 +342,8 @@ class BookCollection {
    */
   findBookByTitle(title) {
     if (!title || typeof title !== 'string') return null;
-    const search = title.trim().toLowerCase();
-    return this.books.find((b) => b && b.title && b.title.toLowerCase() === search) || null;
+    const search = this._norm(title);
+    return this.books.find((b) => b && b.title && this._norm(b.title) === search) || null;
   }
 
   /**
@@ -346,7 +356,7 @@ class BookCollection {
     const newTitle = updates.title ? String(updates.title).trim() : book.title;
     const newAuthor = updates.author ? String(updates.author).trim() : book.author;
     // If title/author changed, ensure no duplicate would be created
-    const duplicate = this.books.some((b) => b !== book && b.title.toLowerCase() === newTitle.toLowerCase() && b.author.toLowerCase() === newAuthor.toLowerCase());
+    const duplicate = this.books.some((b) => b !== book && this._norm(b.title) === this._norm(newTitle) && this._norm(b.author) === this._norm(newAuthor));
     if (duplicate) throw new Error('update would create duplicate book');
 
     if (updates.title) book.title = newTitle;
@@ -432,8 +442,8 @@ class BookCollection {
    */
   findByAuthor(author) {
     if (!author || typeof author !== 'string') return [];
-    const a = author.trim().toLowerCase();
-    return this.books.filter((b) => b && b.author && b.author.toLowerCase().includes(a));
+    const a = this._norm(author);
+    return this.books.filter((b) => b && b.author && this._norm(b.author).includes(a));
   }
 
   /**
@@ -446,14 +456,14 @@ class BookCollection {
     const q = query.trim();
     if (q === '') return [];
     const fields = Array.isArray(options.fields) && options.fields.length > 0 ? options.fields.map((f) => f.toLowerCase()) : ['title', 'author'];
-    const normalized = q.toLowerCase();
+    const normalized = this._norm(q);
     const results = [];
       for (const b of this.books) {
       if (!b) continue;
       let matched = false;
       for (const field of fields) {
-        if (field === 'title' && b.title && b.title.toLowerCase().includes(normalized)) { matched = true; break; }
-        if (field === 'author' && b.author && b.author.toLowerCase().includes(normalized)) { matched = true; break; }
+        if (field === 'title' && b.title && this._norm(b.title).includes(normalized)) { matched = true; break; }
+        if (field === 'author' && b.author && this._norm(b.author).includes(normalized)) { matched = true; break; }
         if (field === 'year' && b.year !== null && String(b.year) === q) { matched = true; break; }
         if (field === 'read') {
           const qBool = (normalized === 'true' || normalized === 'false') ? (normalized === 'true') : null;
