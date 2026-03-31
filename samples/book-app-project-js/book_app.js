@@ -1,6 +1,5 @@
-const readline = require('readline');
 const { BookCollection } = require('./books');
-const { printMenu } = require('./utils');
+const { printMenu, printBooks, prompt, closePrompt, printReviews } = require('./utils');
 
 /**
  * @typedef {Object} Book
@@ -13,78 +12,15 @@ const { printMenu } = require('./utils');
 const collection = new BookCollection();
 
 /**
- * Display a list of books.
- * @param {Book[]|null} books
- * @returns {void}
- */
-function showBooks(books) {
-  if (!books || books.length === 0) {
-    console.log('No books found.');
-    return;
-  }
-
-  console.log('\nYour Book Collection:\n');
-
-  books.forEach((book, index) => {
-    const status = book.read ? '✓' : ' ';
-    const avg = collection.getAverageRating(book.title);
-    const ratingStr = avg === null ? 'No rating' : `Avg: ${avg.toFixed(2)}`;
-    console.log(`${index + 1}. [${status}] ${book.title} by ${book.author} (${book.year}) - ${ratingStr}`);
-  });
-
-  console.log();
-}
-
-/**
  * List books to stdout.
  * @returns {void}
  */
 function handleList() {
   try {
     const books = collection.listBooks();
-    showBooks(books);
+    printBooks(books);
   } catch (err) {
     console.error('\nError listing books:', err.message || err);
-  }
-}
-
-let rl;
-function getReadline() {
-  if (!rl) {
-    if (!process.stdin.isTTY) {
-      throw new Error('Interactive prompts require a TTY');
-    }
-    rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-  }
-  return rl;
-}
-
-/**
- * Prompt the user for input.
- * @param {string} question
- * @returns {Promise<string>}
- */
-function prompt(question) {
-  const reader = getReadline();
-  return new Promise((resolve) => {
-    reader.question(question, (answer) => {
-      resolve(typeof answer === 'string' ? answer.trim() : '');
-    });
-  });
-}
-
-/**
- * Close the interactive prompt.
- * @returns {void}
- */
-function closePrompt() {
-  try {
-    if (rl) {
-      rl.close();
-      rl = undefined;
-    }
-  } catch (err) {
-    // ignore
   }
 }
 
@@ -142,7 +78,7 @@ async function handleFind() {
   const query = await prompt('Search query (title or author): ');
   try {
     const books = collection.search(query, { fields: ['title', 'author'] });
-    showBooks(books);
+    printBooks(books);
   } catch (err) {
     console.error('\nError finding books:', err.message || err);
   }
@@ -176,15 +112,7 @@ async function handleListReviews(args) {
   if (!title) title = await prompt('Book title: ');
   try {
     const reviews = collection.listReviews(title);
-    if (!reviews || reviews.length === 0) {
-      console.log('\nNo reviews found.\n');
-      return;
-    }
-    console.log(`\nReviews for ${title}:\n`);
-    reviews.forEach((r, i) => {
-      console.log(`${i}. Rating: ${r.rating} — ${r.text}`);
-    });
-    console.log();
+    printReviews(reviews, title);
   } catch (err) {
     console.error('\nError listing reviews:', err.message || err);
   }
@@ -209,10 +137,11 @@ async function handleReviewStats(args) {
 }
 
 async function handleEditReview(args) {
-  let title = args && args.length > 2 ? args.slice(2,3).join(' ').trim() : undefined;
+  let title = args && args.length > 2 ? args.slice(2, 3).join(' ').trim() : undefined;
   let index = args && args.length > 3 ? Number(args[3]) : undefined;
   if (!title) title = await prompt('Book title: ');
-  if (index === undefined || Number.isNaN(index)) index = Number(await prompt('Review index to edit: '));
+  if (index === undefined || Number.isNaN(index))
+    index = Number(await prompt('Review index to edit: '));
   const newRating = await prompt('New rating (1-5, leave blank to keep): ');
   const newText = await prompt('New text (leave blank to keep): ');
   try {
@@ -227,10 +156,11 @@ async function handleEditReview(args) {
 }
 
 async function handleRemoveReview(args) {
-  let title = args && args.length > 2 ? args.slice(2,3).join(' ').trim() : undefined;
+  let title = args && args.length > 2 ? args.slice(2, 3).join(' ').trim() : undefined;
   let index = args && args.length > 3 ? Number(args[3]) : undefined;
   if (!title) title = await prompt('Book title: ');
-  if (index === undefined || Number.isNaN(index)) index = Number(await prompt('Review index to remove: '));
+  if (index === undefined || Number.isNaN(index))
+    index = Number(await prompt('Review index to remove: '));
   try {
     collection.removeReview(title, index);
     console.log('\nReview removed.\n');

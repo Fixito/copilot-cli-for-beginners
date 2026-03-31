@@ -1,3 +1,8 @@
+'use strict';
+
+const readline = require('readline');
+const display = require('./display');
+
 /**
  * Print the main menu for the Book Collection App.
  * @returns {void}
@@ -12,35 +17,58 @@ function printMenu() {
 }
 
 /**
- * Print a list of books to the console.
- * @param {Array<{title:string,author:string,year:(number|string|undefined),read:boolean}>} books - Array of book objects.
- * @returns {void}
+ * Delegate printing to the shared display module so formatting is consistent.
  */
 function printBooks(books) {
   try {
-    if (!Array.isArray(books) || books.length === 0) {
-      console.log('No books in your collection.');
-      return;
-    }
-
-    console.log('\nYour Books:');
-    books.forEach((book, index) => {
-      if (!book || typeof book !== 'object') {
-        console.warn(`Skipping invalid book entry at index ${index}`);
-        return;
-      }
-
-      const title = book.title ?? 'Untitled';
-      const author = book.author ?? 'Unknown';
-      const year = book.year ?? 'n/a';
-      const status = book.read ? '✅ Read' : '📖 Unread';
-
-      console.log(`${index + 1}. ${title} by ${author} (${year}) - ${status}`);
-    });
+    display.printBooks(books);
   } catch (err) {
-    // Defensive: log error but don't rethrow to calling code
     console.error('Error printing books:', err && err.message ? err.message : err);
   }
 }
 
-module.exports = { printMenu, printBooks };
+let rl;
+function getReadline() {
+  if (!rl) {
+    if (!process.stdin.isTTY) {
+      throw new Error('Interactive prompts require a TTY');
+    }
+    rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  }
+  return rl;
+}
+
+/**
+ * Prompt the user for input.
+ * @param {string} question
+ * @returns {Promise<string>}
+ */
+function prompt(question) {
+  const reader = getReadline();
+  return new Promise((resolve) => {
+    reader.question(question, (answer) => {
+      resolve(typeof answer === 'string' ? answer.trim() : '');
+    });
+  });
+}
+
+/**
+ * Close the interactive prompt.
+ * @returns {void}
+ */
+function closePrompt() {
+  try {
+    if (rl) {
+      rl.close();
+      rl = undefined;
+    }
+  } catch (err) {
+    // ignore
+  }
+}
+
+function printReviews(reviews, title) {
+  display.printReviews(reviews, title);
+}
+
+module.exports = { printMenu, printBooks, prompt, closePrompt, printReviews };
