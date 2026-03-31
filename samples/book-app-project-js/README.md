@@ -10,8 +10,35 @@ It can add, remove, and list books. Also mark them as read.
 ## Current Features
 
 * Reads books from a JSON file (our database)
-* Input checking is weak in some areas
-* Some tests exist but probably not enough
+* Ratings & reviews per book (ratings 1-5, multiple reviews with optional text)
+* CLI commands to add/list/edit/remove reviews and show average rating
+* Input checking is improved; tests added for reviews
+
+Usage examples
+
+Add a review (non-interactive):
+
+  node book_app.js review add "Dune" 5 "Amazing world-building"
+
+Add a review (interactive):
+
+  node book_app.js review add
+
+List reviews for a book:
+
+  node book_app.js review list "Dune"
+
+Show average ratings for all books:
+
+  node book_app.js review stats
+
+Edit a review (interactive):
+
+  node book_app.js review edit
+
+Remove a review (non-interactive):
+
+  node book_app.js review remove "Dune" 0
 
 ---
 

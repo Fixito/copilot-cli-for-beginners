@@ -27,7 +27,9 @@ function showBooks(books) {
 
   books.forEach((book, index) => {
     const status = book.read ? '✓' : ' ';
-    console.log(`${index + 1}. [${status}] ${book.title} by ${book.author} (${book.year})`);
+    const avg = collection.getAverageRating(book.title);
+    const ratingStr = avg === null ? 'No rating' : `Avg: ${avg.toFixed(2)}`;
+    console.log(`${index + 1}. [${status}] ${book.title} by ${book.author} (${book.year}) - ${ratingStr}`);
   });
 
   console.log();
@@ -146,6 +148,97 @@ async function handleFind() {
   }
 }
 
+async function handleAddReview(args) {
+  // args may be: ['review', 'add', '<title>', '<rating>', '<text...>']
+  let title = args && args.length > 2 ? args.slice(2, 3).join(' ').trim() : undefined;
+  let rating = args && args.length > 3 ? args[3] : undefined;
+  let text = args && args.length > 4 ? args.slice(4).join(' ').trim() : undefined;
+  if (!title) {
+    title = await prompt('Book title: ');
+  }
+  if (!rating) {
+    rating = await prompt('Rating (1-5): ');
+  }
+  if (!text) {
+    text = await prompt('Review text (optional): ');
+  }
+  try {
+    const r = Number(rating);
+    collection.addReview(title, r, text);
+    console.log('\nReview added.\n');
+  } catch (err) {
+    console.error('\nError adding review:', err.message || err);
+  }
+}
+
+async function handleListReviews(args) {
+  let title = args && args.length > 1 ? args.slice(1).join(' ').trim() : undefined;
+  if (!title) title = await prompt('Book title: ');
+  try {
+    const reviews = collection.listReviews(title);
+    if (!reviews || reviews.length === 0) {
+      console.log('\nNo reviews found.\n');
+      return;
+    }
+    console.log(`\nReviews for ${title}:\n`);
+    reviews.forEach((r, i) => {
+      console.log(`${i}. Rating: ${r.rating} — ${r.text}`);
+    });
+    console.log();
+  } catch (err) {
+    console.error('\nError listing reviews:', err.message || err);
+  }
+}
+
+async function handleReviewStats(args) {
+  let title = args && args.length > 1 ? args.slice(1).join(' ').trim() : undefined;
+  if (title) {
+    const avg = collection.getAverageRating(title);
+    if (avg === null) console.log('\nNo ratings for this book.\n');
+    else console.log(`\nAverage rating for ${title}: ${avg.toFixed(2)}\n`);
+  } else {
+    const books = collection.listBooks();
+    console.log('\nAverage ratings:');
+    books.forEach((b) => {
+      const avg = collection.getAverageRating(b.title);
+      const s = avg === null ? 'No rating' : avg.toFixed(2);
+      console.log(`- ${b.title}: ${s}`);
+    });
+    console.log();
+  }
+}
+
+async function handleEditReview(args) {
+  let title = args && args.length > 2 ? args.slice(2,3).join(' ').trim() : undefined;
+  let index = args && args.length > 3 ? Number(args[3]) : undefined;
+  if (!title) title = await prompt('Book title: ');
+  if (index === undefined || Number.isNaN(index)) index = Number(await prompt('Review index to edit: '));
+  const newRating = await prompt('New rating (1-5, leave blank to keep): ');
+  const newText = await prompt('New text (leave blank to keep): ');
+  try {
+    const updates = {};
+    if (newRating && newRating.trim() !== '') updates.rating = Number(newRating);
+    if (newText && newText.trim() !== '') updates.text = newText;
+    collection.editReview(title, index, updates);
+    console.log('\nReview updated.\n');
+  } catch (err) {
+    console.error('\nError editing review:', err.message || err);
+  }
+}
+
+async function handleRemoveReview(args) {
+  let title = args && args.length > 2 ? args.slice(2,3).join(' ').trim() : undefined;
+  let index = args && args.length > 3 ? Number(args[3]) : undefined;
+  if (!title) title = await prompt('Book title: ');
+  if (index === undefined || Number.isNaN(index)) index = Number(await prompt('Review index to remove: '));
+  try {
+    collection.removeReview(title, index);
+    console.log('\nReview removed.\n');
+  } catch (err) {
+    console.error('\nError removing review:', err.message || err);
+  }
+}
+
 function showHelp() {
   console.log(`
 Book Collection Helper
@@ -156,6 +249,11 @@ Commands:
   remove       - Remove a book by title
   find         - Find books by title or author
   mark-as-read - Mark a book as read by title
+  review add   - Add a review (interactive or: review add <title> <rating> [text])
+  review list  - List reviews for a book (interactive or: review list <title>)
+  review stats - Show average rating for a book or all books
+  review edit  - Edit a review by index
+  review remove- Remove a review by index
   help         - Show this help message
 `);
 }
@@ -281,6 +379,29 @@ const commandHandlers = {
   'mark-as-read': async (args) => {
     const titleArg = args.length > 1 ? args.slice(1).join(' ').trim() : undefined;
     await handleMarkAsReadCLI(titleArg);
+  },
+  review: async (args) => {
+    const sub = args.length > 1 ? args[1].toLowerCase() : 'list';
+    switch (sub) {
+      case 'add':
+        await handleAddReview(args);
+        break;
+      case 'list':
+        await handleListReviews(args.slice(1));
+        break;
+      case 'stats':
+        await handleReviewStats(args.slice(1));
+        break;
+      case 'edit':
+        await handleEditReview(args);
+        break;
+      case 'remove':
+        await handleRemoveReview(args);
+        break;
+      default:
+        console.log('Unknown review subcommand.');
+        break;
+    }
   },
   help: async () => {
     showHelp();

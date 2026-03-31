@@ -6,9 +6,10 @@ const DATA_FILE = path.join(__dirname, 'data.json');
 
 /**
  * Simple Book model with lightweight validation and JSON serialization.
+ * Extended to include reviews: array of { rating: number, text: string }
  */
 class Book {
-  constructor(title, author, year = null, read = false) {
+  constructor(title, author, year = null, read = false, reviews = []) {
     if (!title || typeof title !== 'string' || title.trim() === '') {
       throw new Error('Book title is required');
     }
@@ -19,6 +20,7 @@ class Book {
     this.author = author.trim();
     this.year = Book.normalizeYear(year);
     this.read = Boolean(read);
+    this.reviews = Book.sanitizeReviews(reviews);
   }
 
   static normalizeYear(year) {
@@ -28,13 +30,38 @@ class Book {
     return n;
   }
 
+  static sanitizeReviews(reviews) {
+    if (!Array.isArray(reviews)) return [];
+    const out = [];
+    for (const r of reviews) {
+      try {
+        const rating = r && (typeof r.rating === 'number' || typeof r.rating === 'string') ? Number(r.rating) : NaN;
+        const text = r && typeof r.text === 'string' ? r.text : '';
+        if (!Number.isFinite(rating) || !Number.isInteger(rating)) continue;
+        // enforce 1-5 rating
+        if (rating < 1 || rating > 5) continue;
+        out.push({ rating: rating, text: text });
+      } catch (_) {
+        // skip invalid review
+      }
+    }
+    return out;
+  }
+
   toJSON() {
     return {
       title: this.title,
       author: this.author,
       year: this.year,
       read: this.read,
+      reviews: Array.isArray(this.reviews) ? this.reviews.map((r) => ({ rating: r.rating, text: r.text })) : [],
     };
+  }
+
+  averageRating() {
+    if (!Array.isArray(this.reviews) || this.reviews.length === 0) return null;
+    const sum = this.reviews.reduce((s, r) => s + Number(r.rating || 0), 0);
+    return sum / this.reviews.length;
   }
 }
 
@@ -65,12 +92,13 @@ class BookCollection {
           const author = entry && typeof entry.author === 'string' ? entry.author : '';
           const year = entry && Object.prototype.hasOwnProperty.call(entry, 'year') ? entry.year : null;
           const read = entry && Object.prototype.hasOwnProperty.call(entry, 'read') ? Boolean(entry.read) : false;
+          const reviews = entry && Object.prototype.hasOwnProperty.call(entry, 'reviews') ? entry.reviews : [];
           if (!title || !author) {
             // skip invalid legacy entries but don't fail the whole load
             console.warn('Skipping invalid book entry in data file:', entry);
             continue;
           }
-          this.books.push(new Book(title, author, year, read));
+          this.books.push(new Book(title, author, year, read, reviews));
         } catch (e) {
           console.warn('Skipping invalid book entry due to error:', e && e.message ? e.message : String(e));
           continue;
@@ -130,6 +158,60 @@ class BookCollection {
   }
 
   /**
+   * Add a review for a given book title. Rating must be integer between 1 and 5.
+   * Returns the created review object or throws on validation error.
+   */
+  addReview(title, rating, text = '') {
+    const book = this.findBookByTitle(title);
+    if (!book) throw new Error('book not found');
+    const r = Number(rating);
+    if (!Number.isInteger(r) || r < 1 || r > 5) throw new Error('rating must be integer between 1 and 5');
+    const review = { rating: r, text: typeof text === 'string' ? text : String(text) };
+    book.reviews = Array.isArray(book.reviews) ? book.reviews : [];
+    book.reviews.push(review);
+    this.saveBooks();
+    return review;
+  }
+
+  listReviews(title) {
+    const book = this.findBookByTitle(title);
+    if (!book) return [];
+    return Array.isArray(book.reviews) ? book.reviews.slice() : [];
+  }
+
+  getAverageRating(title) {
+    const book = this.findBookByTitle(title);
+    if (!book) return null;
+    return book.averageRating();
+  }
+
+  editReview(title, index, updates = {}) {
+    const book = this.findBookByTitle(title);
+    if (!book) throw new Error('book not found');
+    if (!Array.isArray(book.reviews) || index < 0 || index >= book.reviews.length) throw new Error('review not found');
+    const review = book.reviews[index];
+    if (Object.prototype.hasOwnProperty.call(updates, 'rating')) {
+      const r = Number(updates.rating);
+      if (!Number.isInteger(r) || r < 1 || r > 5) throw new Error('rating must be integer between 1 and 5');
+      review.rating = r;
+    }
+    if (Object.prototype.hasOwnProperty.call(updates, 'text')) {
+      review.text = String(updates.text || '');
+    }
+    this.saveBooks();
+    return review;
+  }
+
+  removeReview(title, index) {
+    const book = this.findBookByTitle(title);
+    if (!book) throw new Error('book not found');
+    if (!Array.isArray(book.reviews) || index < 0 || index >= book.reviews.length) throw new Error('review not found');
+    const removed = book.reviews.splice(index, 1);
+    this.saveBooks();
+    return removed[0];
+  }
+
+  /**
    * List books. Options: { sortBy: 'title'|'author'|'year', order: 'asc'|'desc' }
    */
   listBooks(options = {}) {
@@ -185,10 +267,11 @@ class BookCollection {
         const author = e && typeof e.author === 'string' ? e.author.trim() : '';
         const year = Object.prototype.hasOwnProperty.call(e, 'year') ? e.year : null;
         const read = Object.prototype.hasOwnProperty.call(e, 'read') ? Boolean(e.read) : false;
+        const reviews = Object.prototype.hasOwnProperty.call(e, 'reviews') ? e.reviews : [];
         if (!title || !author) { skipped++; continue; }
         const exists = this.books.some((b) => b.title.toLowerCase() === title.toLowerCase() && b.author.toLowerCase() === author.toLowerCase());
         if (exists && skipDuplicates) { skipped++; continue; }
-        this.books.push(new Book(title, author, year, read));
+        this.books.push(new Book(title, author, year, read, reviews));
         added++;
       } catch (_) {
         skipped++;

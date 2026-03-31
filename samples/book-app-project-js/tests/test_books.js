@@ -67,6 +67,28 @@ describe('BookCollection', () => {
     assert.equal(book.read, true);
   });
 
+  it('should add and compute average rating', () => {
+    const collection = new BookCollection(tempFile);
+    collection.addBook('Dune', 'Frank Herbert', 1965);
+    collection.addReview('Dune', 5, 'Great book');
+    collection.addReview('Dune', 3, 'Okay');
+    const reviews = collection.listReviews('Dune');
+    assert.equal(reviews.length, 2);
+    const avg = collection.getAverageRating('Dune');
+    assert.equal(avg, 4);
+  });
+
+  it('should add review via CLI-like method', async () => {
+    const collection = new BookCollection(tempFile);
+    collection.addBook('Dune', 'Frank Herbert', 1965);
+    // simulate CLI handler by calling addReview directly
+    collection.addReview('Dune', 4, 'Nice');
+    collection.loadBooks();
+    const book = collection.findBookByTitle('Dune');
+    assert.equal(book.reviews.length, 1);
+    assert.equal(book.reviews[0].rating, 4);
+  });
+
   it('should search books by title (partial, case-insensitive)', () => {
     const collection = new BookCollection(tempFile);
     collection.addBook('The Hobbit', 'J.R.R. Tolkien', 1937);
