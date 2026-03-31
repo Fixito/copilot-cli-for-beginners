@@ -21,6 +21,7 @@ It can add, remove, and list books. Also mark them as read.
 * `books.js` - BookCollection class with data logic
 * `utils.js` - Helper functions for UI and input
 * `data.json` - Sample book data
+* `find` - Search books by title or author (partial, case-insensitive). Usage: `node book_app.js find <query>` or run `node book_app.js find` and follow prompts.
 * `tests/test_books.js` - Starter tests using Node's built-in test runner
 
 ---

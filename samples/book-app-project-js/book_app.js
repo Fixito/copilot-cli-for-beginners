@@ -123,11 +123,11 @@ async function handleRemove() {
  * @returns {Promise<void>}
  */
 async function handleFind() {
-  console.log('\nFind Books by Author\n');
+  console.log('\nFind Books (title or author)\n');
 
-  const author = await prompt('Author name: ');
+  const query = await prompt('Search query (title or author): ');
   try {
-    const books = collection.findByAuthor(author);
+    const books = collection.search(query, { fields: ['title', 'author'] });
     showBooks(books);
   } catch (err) {
     console.error('\nError finding books:', err.message || err);
@@ -142,7 +142,7 @@ Commands:
   list         - Show all books
   add          - Add a new book
   remove       - Remove a book by title
-  find         - Find books by author
+  find         - Find books by title or author
   mark-as-read - Mark a book as read by title
   help         - Show this help message
 `);
