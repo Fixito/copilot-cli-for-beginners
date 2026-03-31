@@ -140,4 +140,20 @@ describe('BookCollection.addBook (comprehensive)', () => {
     assert.deepStrictEqual(coll.books.map(b => `${b.title}:::${b.author}`), ['Common Title:::Author A']);
   });
 
+  it('removeBook is case-insensitive: removing "dune" removes "Dune"', () => {
+    const coll = new BookCollection(tempFile);
+    coll.addBook('Dune', 'Frank Herbert');
+    const ok = coll.removeBook('dune');
+    assert.strictEqual(ok, true);
+    assert.deepStrictEqual(coll.books.map(b => b.title), []);
+  });
+
+  it('removeBook on empty collection returns false', () => {
+    const coll = new BookCollection(tempFile);
+    // ensure empty
+    assert.strictEqual(coll.books.length, 0);
+    const ok = coll.removeBook('Any Title');
+    assert.strictEqual(ok, false);
+  });
+
 });
