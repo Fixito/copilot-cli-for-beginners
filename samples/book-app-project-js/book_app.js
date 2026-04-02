@@ -1,6 +1,10 @@
 const { BookCollection } = require('./books');
 const { printMenu, printBooks, prompt, closePrompt, printReviews } = require('./utils');
 
+const MAX_TITLE_LEN = 200;
+const MAX_AUTHOR_LEN = 200;
+const MAX_REVIEW_TEXT_LEN = 2000;
+
 /**
  * @typedef {Object} Book
  * @property {string} title
@@ -39,6 +43,8 @@ async function handleAdd() {
     // validation
     if (!title) throw new Error('Title is required.');
     if (!author) throw new Error('Author is required.');
+    if (title.length > MAX_TITLE_LEN) throw new Error(`Title must be ${MAX_TITLE_LEN} characters or fewer.`);
+    if (author.length > MAX_AUTHOR_LEN) throw new Error(`Author must be ${MAX_AUTHOR_LEN} characters or fewer.`);
     const year = yearStr && yearStr.trim() !== '' ? parseInt(yearStr, 10) : null;
     if (year !== null && isNaN(year)) throw new Error('Year must be a number.');
 
@@ -100,6 +106,9 @@ async function handleAddReview(args) {
   }
   try {
     const r = Number(rating);
+    if (text && text.length > MAX_REVIEW_TEXT_LEN) {
+      throw new Error(`Review text must be ${MAX_REVIEW_TEXT_LEN} characters or fewer.`);
+    }
     collection.addReview(title, r, text);
     console.log('\nReview added.\n');
   } catch (err) {
@@ -147,7 +156,12 @@ async function handleEditReview(args) {
   try {
     const updates = {};
     if (newRating && newRating.trim() !== '') updates.rating = Number(newRating);
-    if (newText && newText.trim() !== '') updates.text = newText;
+    if (newText && newText.trim() !== '') {
+      if (newText.length > MAX_REVIEW_TEXT_LEN) {
+        throw new Error(`Review text must be ${MAX_REVIEW_TEXT_LEN} characters or fewer.`);
+      }
+      updates.text = newText;
+    }
     collection.editReview(title, index, updates);
     console.log('\nReview updated.\n');
   } catch (err) {

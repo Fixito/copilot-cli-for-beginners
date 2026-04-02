@@ -183,9 +183,24 @@ class BookCollection {
    * const testCol = new BookCollection('/tmp/test-books.json');
    */
   constructor(dataFile) {
+    if (dataFile !== undefined && dataFile !== null) {
+      BookCollection._validateJsonFilePath(dataFile);
+    }
     this.dataFile = dataFile || DATA_FILE;
     this.books = [];
     this.loadBooks();
+  }
+
+  static _validateJsonFilePath(filePath) {
+    if (typeof filePath !== 'string' || !filePath) {
+      throw new Error('dataFile must be a non-empty string');
+    }
+    if (!path.isAbsolute(filePath)) {
+      throw new Error('dataFile must be an absolute path');
+    }
+    if (path.extname(filePath).toLowerCase() !== '.json') {
+      throw new Error('dataFile must have a .json extension');
+    }
   }
 
   // Normalization helper: trims, applies Unicode NFC normalization, and lowercases.
@@ -234,7 +249,9 @@ class BookCollection {
             entry && Object.prototype.hasOwnProperty.call(entry, 'reviews') ? entry.reviews : [];
           if (!title || !author) {
             // skip invalid legacy entries but don't fail the whole load
-            console.warn('Skipping invalid book entry in data file:', entry);
+            const safeTitle =
+              typeof entry?.title === 'string' ? entry.title.slice(0, 60) : '[unknown]';
+            console.warn(`Skipping invalid book entry in data file: title="${safeTitle}"`);
             continue;
           }
           this.books.push(new Book(title, author, year, read, reviews));
@@ -663,6 +680,10 @@ class BookCollection {
    */
   exportToFile(filePath) {
     if (!filePath || typeof filePath !== 'string') throw new Error('filePath required');
+    const resolved = path.resolve(filePath);
+    if (path.extname(resolved).toLowerCase() !== '.json') {
+      throw new Error('filePath must have a .json extension');
+    }
     const dir = path.dirname(filePath);
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(
