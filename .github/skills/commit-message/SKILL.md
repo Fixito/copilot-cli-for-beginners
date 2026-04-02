@@ -19,16 +19,16 @@ Generate commit messages following the Conventional Commits specification.
 
 ## Types
 
-| Type | When to Use |
-|------|-------------|
-| `feat` | New feature |
-| `fix` | Bug fix |
-| `docs` | Documentation only |
-| `style` | Formatting (no code change) |
+| Type       | When to Use                             |
+| ---------- | --------------------------------------- |
+| `feat`     | New feature                             |
+| `fix`      | Bug fix                                 |
+| `docs`     | Documentation only                      |
+| `style`    | Formatting (no code change)             |
 | `refactor` | Code change that neither fixes nor adds |
-| `perf` | Performance improvement |
-| `test` | Adding or updating tests |
-| `chore` | Maintenance tasks |
+| `perf`     | Performance improvement                 |
+| `test`     | Adding or updating tests                |
+| `chore`    | Maintenance tasks                       |
 
 ## Rules
 
@@ -41,11 +41,13 @@ Generate commit messages following the Conventional Commits specification.
 ## Examples
 
 Simple:
+
 ```
 fix(auth): prevent redirect loop on expired sessions
 ```
 
 With body:
+
 ```
 feat(api): add rate limiting to public endpoints
 
